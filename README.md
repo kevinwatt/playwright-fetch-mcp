@@ -1,6 +1,4 @@
-# Fetch MCP 伺服器
-
-![fetch mcp logo](logo.jpg)
+# BigGo Fetch MCP 伺服器
 
 此 MCP 伺服器提供以各種格式擷取網頁內容的功能，包括 HTML、JSON、純文字和 Markdown。
 
