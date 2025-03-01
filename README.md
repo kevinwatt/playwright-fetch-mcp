@@ -71,6 +71,54 @@ npm start
 }
 ```
 
+## DNList 功能
+
+DNList（Domain Name List）是一個用於管理和驗證電子商務網站域名的模組。此功能確保 Fetch 工具僅能爬取合法的電子商務網站，防止濫用。
+
+### 主要功能
+
+- **快取管理**：DNList 使用本地快取文件（`dnlist.cache.json`）存儲允許的域名列表，減少對遠程 API 的請求次數。
+- **自動更新**：快取設有 30 分鐘的有效期（TTL），過期後會自動從遠程 API 更新。
+- **域名驗證**：提供 `isAllowed` 方法，用於檢查 URL 是否屬於允許的電子商務網站。
+- **正規表達式匹配**：使用正規表達式進行域名匹配，支援複雜的匹配模式。
+- **主機名標準化**：自動移除 "www." 前綴，確保 `example.com` 和 `www.example.com` 被視為相同域名。
+
+### 技術實現
+
+DNList 類提供以下靜態方法：
+
+- **loadCache()**：從本地文件加載快取的域名列表。
+- **updateCache()**：從遠程 API 獲取最新的域名列表並更新本地快取。
+- **getValidCache()**：獲取有效的快取，如果快取過期則自動更新。
+- **isAllowed(url)**：檢查給定 URL 是否屬於允許的電子商務網站。
+
+### 使用方式
+
+在 Fetcher 類中，每次請求前都會調用 DNList.isAllowed() 方法進行驗證：
+
+```typescript
+const allowed = await DNList.isAllowed(url);
+if (!allowed) {
+  throw new Error("Not a EC site. Fetch Tools only crawler EC Site.");
+}
+```
+
+### 快取文件格式
+
+快取文件（`dnlist.cache.json`）使用以下格式：
+
+```json
+{
+  "updatedAt": 1234567890123, // 時間戳（毫秒）
+  "entries": [
+    {
+      "ptn": "example\\.com" // 域名匹配模式（正規表達式）
+    },
+    // 更多域名項目...
+  ]
+}
+```
+
 ## 特點
 
 - 使用現代 fetch API 擷取網頁內容
@@ -78,6 +126,7 @@ npm start
 - 提供多種格式的內容: HTML、JSON、純文字和 Markdown
 - 使用 JSDOM 解析 HTML 並提取文字
 - 使用 TurndownService 將 HTML 轉換為 Markdown
+- 整合 DNList 功能，僅允許爬取合法的電子商務網站
 
 ## 開發
 
