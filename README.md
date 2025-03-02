@@ -61,15 +61,38 @@ npm start
 ```json
 {
   "mcpServers": {
-    "fetch": {
+    "playwright-fetch": {
       "command": "node",
       "args": [
-        "{ABSOLUTE PATH TO FILE HERE}/dist/index.js"
-      ]
+        "/path/to/your/dist/index.js"
+      ],
+      "enabled": true,
+      "env": {
+        "fetch_html": "Enable",
+        "DNListCheck": "Disable"
+      }
     }
   }
 }
 ```
+
+### 環境變量設置
+
+此 MCP 伺服器支援以下環境變量：
+
+- **fetch_html**
+  - 功能：控制 fetch_html 工具是否啟用
+  - 值：
+    - `"Enable"`: 啟用 fetch_html 工具
+    - `"Disable"`: 禁用 fetch_html 工具（預設）
+  - 說明：預設情況下，fetch_html 工具是禁用的，需要明確啟用才能使用
+
+- **DNListCheck**
+  - 功能：控制是否檢查 URL 是否為電子商務網站
+  - 值：
+    - `"Enable"`: 啟用 DNList 檢查（預設）
+    - `"Disable"`: 禁用 DNList 檢查
+  - 說明：預設情況下，伺服器會檢查 URL 是否為允許的電子商務網站，可以禁用此功能以抓取任何網站
 
 ## DNList 功能
 
@@ -121,12 +144,15 @@ if (!allowed) {
 
 ## 特點
 
-- 使用現代 fetch API 擷取網頁內容
+- 使用 Playwright 擷取網頁內容，支援現代網頁和動態內容
 - 支援請求中自訂標頭
 - 提供多種格式的內容: HTML、JSON、純文字和 Markdown
 - 使用 JSDOM 解析 HTML 並提取文字
 - 使用 TurndownService 將 HTML 轉換為 Markdown
 - 整合 DNList 功能，僅允許爬取合法的電子商務網站
+- 支援重定向，最多允許 3 層重定向
+- 實現重試機制，最多重試 2 次
+- 可通過環境變量控制功能啟用/禁用
 
 ## 開發
 

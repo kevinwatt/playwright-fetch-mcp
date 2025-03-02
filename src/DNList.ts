@@ -1,7 +1,10 @@
 import { promises as fs } from "fs";
 import path from "path";
 
-const CACHE_FILE = path.join(__dirname, "../dnlist.cache.json");
+// 在測試環境中使用 process.cwd()
+const dirPath = process.cwd();
+
+const CACHE_FILE = path.join(dirPath, "dnlist.cache.json");
 const CACHE_TTL = 30 * 60 * 1000; // 30 分鐘
 
 interface DNEntry {
@@ -25,17 +28,26 @@ export class DNList {
   }
 
   static async updateCache(): Promise<DNListCache> {
-    const response = await fetch("https://extension.biggo.com/api/eclist.php");
-    const remoteData = await response.json() as { data: { tw: Record<string, DNEntry> } };
-    // 從 remoteData 解析出 DNListCache 格式資料
-    // 這裡假設 remoteData.data.tw 為我們需要的物件，並取出其中的 ptn
-    const entries: DNEntry[] = Object.values(remoteData.data.tw);
-    const cache: DNListCache = {
-      updatedAt: Date.now(),
-      entries,
-    };
-    await fs.writeFile(CACHE_FILE, JSON.stringify(cache), "utf-8");
-    return cache;
+    try {
+      const response = await fetch("https://extension.biggo.com/api/eclist.php");
+      const remoteData = await response.json() as { data: { tw: Record<string, DNEntry> } };
+      // 從 remoteData 解析出 DNListCache 格式資料
+      // 這裡假設 remoteData.data.tw 為我們需要的物件，並取出其中的 ptn
+      const entries: DNEntry[] = Object.values(remoteData.data.tw);
+      const cache: DNListCache = {
+        updatedAt: Date.now(),
+        entries,
+      };
+      await fs.writeFile(CACHE_FILE, JSON.stringify(cache), "utf-8");
+      return cache;
+    } catch (error) {
+      // 如果無法獲取遠程數據，返回一個空的快取
+      console.error("無法更新 DNList 快取:", error);
+      return {
+        updatedAt: Date.now(),
+        entries: [],
+      };
+    }
   }
 
   static async getValidCache(): Promise<DNListCache> {

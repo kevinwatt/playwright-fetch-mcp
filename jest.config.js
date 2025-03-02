@@ -10,9 +10,22 @@ export default {
     "^(\\.{1,2}/.*)\\.js$": "$1"
   },
   transform: {
-    "^.+\\.(ts|tsx)$": ["ts-jest", { useESM: true }]
+    "^.+\\.(ts|tsx)$": [
+      "ts-jest", 
+      { 
+        useESM: true,
+        tsconfig: "tsconfig.test.json"
+      }
+    ]
   },
   transformIgnorePatterns: [
     "node_modules/(?!(node-fetch)/)"
   ],
+  // 明確指定 ts-jest 配置
+  globals: {
+    "ts-jest": {
+      tsconfig: "tsconfig.test.json",
+      useESM: true
+    }
+  }
 };
