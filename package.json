@@ -16,6 +16,7 @@
   "keywords": [],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
+    "@mozilla/readability": "^0.5.0",
     "jsdom": "^25.0.1",
     "node-fetch": "^3.3.2",
     "playwright": "^1.50.1",
