@@ -23,7 +23,7 @@ export class Fetcher {
     if (shouldCheckDNList) {
       const allowed = await DNList.isAllowed(url);
       if (!allowed) {
-        throw new Error("Not a EC site. Fetch Tools only crawler EC Site.");
+        throw new Error("Not an EC site. Fetch Tools only crawl EC Sites.");
       }
     }
 
@@ -48,7 +48,7 @@ export class Fetcher {
         const page = await context.newPage();
 
         try {
-          console.log(`嘗試第 ${attempt + 1} 次抓取 ${url}`);
+          console.log(`Attempt ${attempt + 1} to fetch ${url}`);
           
           // 追蹤重定向次數
           let redirectCount = 0;
@@ -60,11 +60,11 @@ export class Fetcher {
             // 檢查是否為重定向請求
             if (request.isNavigationRequest() && request.redirectedFrom()) {
               redirectCount++;
-              console.log(`重定向 #${redirectCount}: ${request.redirectedFrom()?.url()} -> ${request.url()}`);
+              console.log(`Redirect #${redirectCount}: ${request.redirectedFrom()?.url()} -> ${request.url()}`);
               
               // 如果重定向次數超過限制，則中止請求
               if (redirectCount > Fetcher.MAX_REDIRECTS) {
-                console.error(`重定向次數超過限制 (${Fetcher.MAX_REDIRECTS})，中止請求`);
+                console.error(`Redirect count exceeded limit (${Fetcher.MAX_REDIRECTS}), aborting request`);
                 await route.abort('failed');
                 return;
               }
@@ -105,12 +105,12 @@ export class Fetcher {
         }
       } catch (e: unknown) {
         lastError = e instanceof Error ? e : new Error(String(e));
-        console.error(`第 ${attempt + 1} 次抓取失敗: ${lastError.message}`);
+        console.error(`Attempt ${attempt + 1} failed: ${lastError.message}`);
         
         // 如果不是最後一次嘗試，則等待一段時間後重試
         if (attempt < Fetcher.MAX_RETRIES) {
           const delay = 1000 * (attempt + 1); // 逐漸增加延遲時間
-          console.log(`等待 ${delay}ms 後重試...`);
+          console.log(`Waiting ${delay}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
@@ -138,27 +138,34 @@ export class Fetcher {
 
   static async json(requestPayload: RequestPayload) {
     try {
-      const { content, contentType } = await Fetcher._fetch(requestPayload);
+      const { content } = await Fetcher._fetch(requestPayload);
       
-      // 檢查內容類型是否為 JSON
-      if (!contentType.includes("application/json") && !contentType.includes("text/json")) {
-        // 嘗試解析內容為 JSON
-        try {
-          const jsonObj = JSON.parse(content);
-          return {
-            content: [{ type: "text", text: JSON.stringify(jsonObj) }],
-            isError: false,
-          };
-        } catch (parseError) {
-          throw new Error("Response is not valid JSON");
+      // 添加調試信息
+      console.log("JSON方法收到的內容:", content.substring(0, 200) + "...");
+      
+      // 嘗試從HTML中提取JSON
+      let jsonContent = content;
+      
+      // 檢查是否是HTML包裝的JSON
+      if (content.includes("<pre>") && content.includes("</pre>")) {
+        const preMatch = content.match(/<pre>([\s\S]*?)<\/pre>/);
+        if (preMatch && preMatch[1]) {
+          jsonContent = preMatch[1].trim();
+          console.log("從HTML中提取的JSON:", jsonContent.substring(0, 200) + "...");
         }
-      } else {
-        // 直接解析 JSON
-        const jsonObj = JSON.parse(content);
+      }
+      
+      // 嘗試解析JSON
+      try {
+        const jsonObj = JSON.parse(jsonContent);
+        console.log("JSON解析成功:", JSON.stringify(jsonObj).substring(0, 200) + "...");
         return {
           content: [{ type: "text", text: JSON.stringify(jsonObj) }],
           isError: false,
         };
+      } catch (parseError) {
+        console.error("JSON解析失敗:", parseError);
+        throw new Error("Response is not valid JSON");
       }
     } catch (error) {
       return Fetcher._handleError(error);
@@ -193,9 +200,52 @@ export class Fetcher {
   static async markdown(requestPayload: RequestPayload) {
     try {
       const { content } = await Fetcher._fetch(requestPayload);
-      const turndownService = new TurndownService();
+      
+      // 創建 TurndownService 實例並配置選項
+      const turndownService = new TurndownService({
+        headingStyle: 'atx',           // 使用 # 風格的標題
+        codeBlockStyle: 'fenced',      // 使用 ``` 風格的代碼塊
+        emDelimiter: '*',              // 使用 * 作為斜體分隔符
+        strongDelimiter: '**',         // 使用 ** 作為粗體分隔符
+        bulletListMarker: '-',         // 使用 - 作為無序列表標記
+        hr: '---',                     // 使用 --- 作為水平線
+        linkStyle: 'inlined'           // 使用內聯風格的鏈接
+      });
+      
+      // 自定義轉義函數，減少過度轉義
+      turndownService.escape = function(text) {
+        // 只轉義必要的 Markdown 字符
+        return text
+          // 轉義反斜線
+          .replace(/\\/g, '\\\\')
+          // 轉義標題前的數字列表格式
+          .replace(/^(\d+)\.\s/gm, '$1\\. ')
+          // 轉義 * 和 _ 但只在它們可能被解釋為格式化標記時
+          .replace(/([*_])/g, '\\$1')
+          // 轉義 ` 但只在單個反引號時
+          .replace(/`/g, '\\`')
+          // 轉義 [] 和 ()
+          .replace(/\[/g, '\\[')
+          .replace(/\]/g, '\\]')
+          .replace(/\(/g, '\\(')
+          .replace(/\)/g, '\\)')
+          // 轉義 # 但只在行首時
+          .replace(/^#/gm, '\\#');
+      };
+      
+      // 轉換 HTML 為 Markdown
       const markdown = turndownService.turndown(content);
-      return { content: [{ type: "text", text: markdown }], isError: false };
+      
+      // 清理多餘的轉義和空行
+      const cleanedMarkdown = markdown
+        // 移除連續的空行，將多個空行替換為最多兩個空行
+        .replace(/\n{3,}/g, '\n\n')
+        // 移除行尾空白
+        .replace(/[ \t]+$/gm, '')
+        // 修復過度轉義的問題
+        .replace(/\\\\([*_`\[\]()#])/g, '\\$1');
+      
+      return { content: [{ type: "text", text: cleanedMarkdown }], isError: false };
     } catch (error) {
       return Fetcher._handleError(error);
     }

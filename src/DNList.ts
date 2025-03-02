@@ -42,7 +42,7 @@ export class DNList {
       return cache;
     } catch (error) {
       // 如果無法獲取遠程數據，返回一個空的快取
-      console.error("無法更新 DNList 快取:", error);
+      console.error("Unable to update DNList cache:", error);
       return {
         updatedAt: Date.now(),
         entries: [],

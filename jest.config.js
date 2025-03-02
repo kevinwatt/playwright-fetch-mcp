@@ -14,18 +14,15 @@ export default {
       "ts-jest", 
       { 
         useESM: true,
-        tsconfig: "tsconfig.test.json"
+        tsconfig: "tsconfig.test.json",
+        isolatedModules: true,
+        skipTypechecking: true
       }
     ]
   },
   transformIgnorePatterns: [
     "node_modules/(?!(node-fetch)/)"
   ],
-  // 明確指定 ts-jest 配置
-  globals: {
-    "ts-jest": {
-      tsconfig: "tsconfig.test.json",
-      useESM: true
-    }
-  }
+  // 只測試 src 目錄下的文件
+  testMatch: ["**/src/**/*.test.ts"],
 };

@@ -34,17 +34,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   if (isFetchHtmlEnabled) {
     tools.push({
       name: "fetch_html",
-      description: "從網站擷取並返回 HTML 內容",
+      description: "Fetch and return the raw HTML content from a website",
       inputSchema: {
         type: "object",
         properties: {
           url: {
             type: "string",
-            description: "要擷取的網站 URL",
+            description: "The URL of the website to fetch",
           },
           headers: {
             type: "object",
-            description: "可選的請求標頭",
+            description: "Optional request headers",
           },
         },
         required: ["url"],
@@ -56,17 +56,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   tools.push(
     {
       name: "fetch_markdown",
-      description: "從網站擷取並返回 Markdown 格式內容",
+      description: "Fetch content from a website and convert it to Markdown format",
       inputSchema: {
         type: "object",
         properties: {
           url: {
             type: "string",
-            description: "要擷取的網站 URL",
+            description: "The URL of the website to fetch",
           },
           headers: {
             type: "object",
-            description: "可選的請求標頭",
+            description: "Optional request headers",
           },
         },
         required: ["url"],
@@ -74,17 +74,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     },
     {
       name: "fetch_txt",
-      description: "從網站擷取並返回純文字內容（不含 HTML）",
+      description: "Fetch and return plain text content from a website (HTML tags removed)",
       inputSchema: {
         type: "object",
         properties: {
           url: {
             type: "string",
-            description: "要擷取的網站 URL",
+            description: "The URL of the website to fetch",
           },
           headers: {
             type: "object",
-            description: "可選的請求標頭",
+            description: "Optional request headers",
           },
         },
         required: ["url"],
@@ -92,17 +92,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     },
     {
       name: "fetch_json",
-      description: "從 URL 擷取並返回 JSON 內容",
+      description: "Fetch and return JSON content from a URL",
       inputSchema: {
         type: "object",
         properties: {
           url: {
             type: "string",
-            description: "要擷取的 JSON URL",
+            description: "The URL of the JSON resource to fetch",
           },
           headers: {
             type: "object",
-            description: "可選的請求標頭",
+            description: "Optional request headers",
           },
         },
         required: ["url"],
@@ -129,7 +129,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const isFetchHtmlEnabled = fetchHtmlEnv.toLowerCase() === "enable";
     
     if (!isFetchHtmlEnabled) {
-      throw new Error("fetch_html 工具已禁用。請在環境變量中設置 fetch_html=Enable 以啟用此工具。");
+      throw new Error("The fetch_html tool is disabled. Please set the environment variable fetch_html=Enable to enable this tool.");
     }
   }
   
@@ -138,20 +138,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (handler) {
     return handler(validatedArgs);
   }
-  throw new Error("找不到對應的工具");
+  throw new Error("Tool not found");
 });
 
 async function main() {
   // 輸出環境變量設置信息
-  console.log("環境變量設置:");
-  console.log(`- fetch_html: ${process.env.fetch_html || "Disable"} (預設: Disable)`);
-  console.log(`- DNListCheck: ${process.env.DNListCheck || "Enable"} (預設: Enable)`);
+  console.log("Environment variables settings:");
+  console.log(`- fetch_html: ${process.env.fetch_html || "Disable"} (default: Disable)`);
+  console.log(`- DNListCheck: ${process.env.DNListCheck || "Enable"} (default: Enable)`);
   
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
 
 main().catch((error) => {
-  console.error("main() 中發生嚴重錯誤:", error);
+  console.error("Critical error in main():", error);
   process.exit(1);
 });
