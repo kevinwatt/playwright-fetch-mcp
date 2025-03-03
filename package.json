@@ -1,11 +1,11 @@
 {
-  "name": "fetch",
-  "version": "1.0.0",
-  "description": "",
+  "name": "@kevinwatt/biggo-eclimit-fetch-mcp",
+  "version": "1.0.2",
+  "description": "A tool for fetching content from e-commerce websites using Playwright",
   "type": "module",
-  "main": "index.js",
+  "main": "dist/index.js",
   "license": "MIT",
-  "author": "zcaceres (@zachcaceres zach.dev)",
+  "author": "Kevin Watt",
   "scripts": {
     "build": "tsc && shx chmod +x dist/*.js",
     "prepare": "npm run build",
