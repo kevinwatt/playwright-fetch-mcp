@@ -58,6 +58,8 @@ npm start
 
 要將此伺服器整合到桌面應用程式中，在應用程式的伺服器配置中添加以下內容:
 
+#### 使用本地安裝的方式
+
 ```json
 {
   "mcpServers": {
@@ -69,6 +71,27 @@ npm start
       "enabled": true,
       "env": {
         "fetch_html": "Enable",
+        "DNListCheck": "Disable"
+      }
+    }
+  }
+}
+```
+
+#### 使用 npx 方式（推薦）
+
+```json
+{
+  "mcpServers": {
+    "playwright-fetch": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@kevinwatt/biggo-eclimit-fetch-mcp"
+      ],
+      "enabled": true,
+      "env": {
+        "fetch_html": "Disable",
         "DNListCheck": "Disable"
       }
     }
