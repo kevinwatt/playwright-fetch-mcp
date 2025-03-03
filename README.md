@@ -2,6 +2,45 @@
 
 此 MCP 伺服器提供以各種格式擷取網頁內容的功能，包括 HTML、JSON、純文字和 Markdown。
 
+## 安裝
+
+### 先決條件
+
+在使用此工具前，需要安裝 Playwright 及其瀏覽器依賴：
+
+#### Windows
+```bash
+npm install -g playwright
+npx playwright install chromium
+```
+
+#### macOS
+```bash
+npm install -g playwright
+npx playwright install chromium
+```
+
+#### Linux
+```bash
+npm install -g playwright
+npx playwright install chromium
+```
+
+### 安裝方式
+
+#### 通過 npm 安裝
+```bash
+npm install @kevinwatt/biggo-eclimit-fetch-mcp
+```
+
+#### 從源碼安裝
+```bash
+git clone https://github.com/kevinwatt/BigGo-eclimit-playwright-fetch-mcp.git
+cd BigGo-eclimit-playwright-fetch-mcp
+npm install
+npm run build
+```
+
 ## 組件
 
 ### 工具
