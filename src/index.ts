@@ -11,8 +11,8 @@ import { Fetcher } from "./Fetcher.js";
 
 const server = new Server(
   {
-    name: "zcaceres/fetch",
-    version: "0.1.0",
+    name: "@kevinwatt/biggo-eclimit-fetch-mcp",
+    version: "1.0.1",
   },
   {
     capabilities: {
