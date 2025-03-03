@@ -107,9 +107,7 @@ describe("Fetcher", () => {
     });
 
     it("應解析並返回 JSON 內容", async () => {
-      console.log("開始測試JSON API:", testSites.json);
       const result = await Fetcher.json({ url: testSites.json });
-      console.log("JSON測試結果:", JSON.stringify(result));
       expect(result.isError).toBe(false);
       expect(result.content[0].type).toBe("text");
       expect(result.content[0].text).toBeDefined();

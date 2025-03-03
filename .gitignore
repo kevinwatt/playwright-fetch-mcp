@@ -4,6 +4,8 @@ node_modules
 # 排除編譯後的輸出資料夾
 /dist
 
+/dnlist.cache.json
+
 # 日誌文件
 logs
 *.log

@@ -3,6 +3,7 @@ import TurndownService from "turndown";
 import { RequestPayload } from "./types.js";
 import { DNList } from "./DNList.js";
 import { chromium } from "playwright";
+import { Readability } from "@mozilla/readability";
 
 export class Fetcher {
   // 最大重試次數
@@ -140,9 +141,6 @@ export class Fetcher {
     try {
       const { content } = await Fetcher._fetch(requestPayload);
       
-      // 添加調試信息
-      console.log("JSON方法收到的內容:", content.substring(0, 200) + "...");
-      
       // 嘗試從HTML中提取JSON
       let jsonContent = content;
       
@@ -151,20 +149,17 @@ export class Fetcher {
         const preMatch = content.match(/<pre>([\s\S]*?)<\/pre>/);
         if (preMatch && preMatch[1]) {
           jsonContent = preMatch[1].trim();
-          console.log("從HTML中提取的JSON:", jsonContent.substring(0, 200) + "...");
         }
       }
       
       // 嘗試解析JSON
       try {
         const jsonObj = JSON.parse(jsonContent);
-        console.log("JSON解析成功:", JSON.stringify(jsonObj).substring(0, 200) + "...");
         return {
           content: [{ type: "text", text: JSON.stringify(jsonObj) }],
           isError: false,
         };
       } catch (parseError) {
-        console.error("JSON解析失敗:", parseError);
         throw new Error("Response is not valid JSON");
       }
     } catch (error) {
@@ -201,51 +196,158 @@ export class Fetcher {
     try {
       const { content } = await Fetcher._fetch(requestPayload);
       
-      // 創建 TurndownService 實例並配置選項
-      const turndownService = new TurndownService({
-        headingStyle: 'atx',           // 使用 # 風格的標題
-        codeBlockStyle: 'fenced',      // 使用 ``` 風格的代碼塊
-        emDelimiter: '*',              // 使用 * 作為斜體分隔符
-        strongDelimiter: '**',         // 使用 ** 作為粗體分隔符
-        bulletListMarker: '-',         // 使用 - 作為無序列表標記
-        hr: '---',                     // 使用 --- 作為水平線
-        linkStyle: 'inlined'           // 使用內聯風格的鏈接
-      });
+      // 使用 JSDOM 解析 HTML
+      const dom = new JSDOM(content, { url: requestPayload.url });
+      const document = dom.window.document;
       
-      // 自定義轉義函數，減少過度轉義
-      turndownService.escape = function(text) {
-        // 只轉義必要的 Markdown 字符
-        return text
-          // 轉義反斜線
-          .replace(/\\/g, '\\\\')
-          // 轉義標題前的數字列表格式
-          .replace(/^(\d+)\.\s/gm, '$1\\. ')
-          // 轉義 * 和 _ 但只在它們可能被解釋為格式化標記時
-          .replace(/([*_])/g, '\\$1')
-          // 轉義 ` 但只在單個反引號時
-          .replace(/`/g, '\\`')
-          // 轉義 [] 和 ()
-          .replace(/\[/g, '\\[')
-          .replace(/\]/g, '\\]')
-          .replace(/\(/g, '\\(')
-          .replace(/\)/g, '\\)')
-          // 轉義 # 但只在行首時
-          .replace(/^#/gm, '\\#');
-      };
-      
-      // 轉換 HTML 為 Markdown
-      const markdown = turndownService.turndown(content);
-      
-      // 清理多餘的轉義和空行
-      const cleanedMarkdown = markdown
-        // 移除連續的空行，將多個空行替換為最多兩個空行
-        .replace(/\n{3,}/g, '\n\n')
-        // 移除行尾空白
-        .replace(/[ \t]+$/gm, '')
-        // 修復過度轉義的問題
-        .replace(/\\\\([*_`\[\]()#])/g, '\\$1');
-      
-      return { content: [{ type: "text", text: cleanedMarkdown }], isError: false };
+      try {
+        // 嘗試使用 Readability 提取主要內容
+        const reader = new Readability(document);
+        const article = reader.parse();
+        
+        if (article && article.content) {
+          // 使用提取的主要內容創建新的 DOM
+          const cleanDom = new JSDOM(article.content);
+          const cleanDocument = cleanDom.window.document;
+          
+          // 創建 TurndownService 實例並配置選項
+          const turndownService = new TurndownService({
+            headingStyle: 'atx',           // 使用 # 風格的標題
+            codeBlockStyle: 'fenced',      // 使用 ``` 風格的代碼塊
+            emDelimiter: '*',              // 使用 * 作為斜體分隔符
+            strongDelimiter: '**',         // 使用 ** 作為粗體分隔符
+            bulletListMarker: '-',         // 使用 - 作為無序列表標記
+            hr: '---',                     // 使用 --- 作為水平線
+            linkStyle: 'inlined'           // 使用內聯風格的鏈接
+          });
+          
+          // 自定義轉義函數，減少過度轉義
+          turndownService.escape = function(text) {
+            // 只轉義必要的 Markdown 字符
+            return text
+              // 轉義反斜線
+              .replace(/\\/g, '\\\\')
+              // 轉義標題前的數字列表格式
+              .replace(/^(\d+)\.\s/gm, '$1\\. ')
+              // 轉義 * 和 _ 但只在它們可能被解釋為格式化標記時
+              .replace(/([*_])/g, '\\$1')
+              // 轉義 ` 但只在單個反引號時
+              .replace(/`/g, '\\`')
+              // 轉義 [] 和 ()
+              .replace(/\[/g, '\\[')
+              .replace(/\]/g, '\\]')
+              .replace(/\(/g, '\\(')
+              .replace(/\)/g, '\\)')
+              // 轉義 # 但只在行首時
+              .replace(/^#/gm, '\\#');
+          };
+          
+          // 添加文章標題（如果有）
+          let markdown = '';
+          if (article.title) {
+            markdown += `# ${article.title}\n\n`;
+          }
+          
+          // 添加作者信息（如果有）
+          if (article.byline) {
+            markdown += `*作者: ${article.byline}*\n\n`;
+          }
+          
+          // 轉換清理後的 HTML 為 Markdown
+          markdown += turndownService.turndown(cleanDocument.body.innerHTML);
+          
+          // 清理多餘的轉義和空行
+          const cleanedMarkdown = markdown
+            // 移除連續的空行，將多個空行替換為最多兩個空行
+            .replace(/\n{3,}/g, '\n\n')
+            // 移除行尾空白
+            .replace(/[ \t]+$/gm, '')
+            // 修復過度轉義的問題
+            .replace(/\\\\([*_`\[\]()#])/g, '\\$1')
+            // 移除空的 Markdown 鏈接
+            .replace(/\[]\(.*?\)/g, '')
+            // 移除只包含空白的行
+            .replace(/^\s+$/gm, '');
+          
+          return { content: [{ type: "text", text: cleanedMarkdown }], isError: false };
+        } else {
+          // 如果 Readability 無法提取內容，回退到原始的清理方法
+          console.log("Readability 無法提取內容，回退到原始清理方法");
+          throw new Error("Readability 無法提取內容");
+        }
+      } catch (readabilityError) {
+        console.error("Readability 處理失敗:", readabilityError);
+        
+        // 回退到原始的清理方法
+        // 移除所有 script 標籤
+        const scripts = document.getElementsByTagName("script");
+        Array.from(scripts).forEach((script) => script.remove());
+        
+        // 移除所有 style 標籤
+        const styles = document.getElementsByTagName("style");
+        Array.from(styles).forEach((style) => style.remove());
+        
+        // 移除所有 link 標籤 (通常用於引入外部 CSS)
+        const links = document.getElementsByTagName("link");
+        Array.from(links).filter(link => link.getAttribute("rel") === "stylesheet").forEach(link => link.remove());
+        
+        // 移除所有 noscript 標籤
+        const noscripts = document.getElementsByTagName("noscript");
+        Array.from(noscripts).forEach((noscript) => noscript.remove());
+        
+        // 移除所有 iframe 標籤
+        const iframes = document.getElementsByTagName("iframe");
+        Array.from(iframes).forEach((iframe) => iframe.remove());
+        
+        // 移除所有 svg 標籤
+        const svgs = document.getElementsByTagName("svg");
+        Array.from(svgs).forEach((svg) => svg.remove());
+        
+        // 移除所有 inline 樣式
+        const elementsWithStyle = document.querySelectorAll("[style]");
+        Array.from(elementsWithStyle).forEach((el) => el.removeAttribute("style"));
+        
+        // 獲取清理後的 HTML
+        const cleanedHtml = document.documentElement.outerHTML;
+        
+        // 創建 TurndownService 實例並配置選項
+        const turndownService = new TurndownService({
+          headingStyle: 'atx',
+          codeBlockStyle: 'fenced',
+          emDelimiter: '*',
+          strongDelimiter: '**',
+          bulletListMarker: '-',
+          hr: '---',
+          linkStyle: 'inlined'
+        });
+        
+        // 自定義轉義函數，減少過度轉義
+        turndownService.escape = function(text) {
+          return text
+            .replace(/\\/g, '\\\\')
+            .replace(/^(\d+)\.\s/gm, '$1\\. ')
+            .replace(/([*_])/g, '\\$1')
+            .replace(/`/g, '\\`')
+            .replace(/\[/g, '\\[')
+            .replace(/\]/g, '\\]')
+            .replace(/\(/g, '\\(')
+            .replace(/\)/g, '\\)')
+            .replace(/^#/gm, '\\#');
+        };
+        
+        // 轉換清理後的 HTML 為 Markdown
+        const markdown = turndownService.turndown(cleanedHtml);
+        
+        // 清理多餘的轉義和空行
+        const cleanedMarkdown = markdown
+          .replace(/\n{3,}/g, '\n\n')
+          .replace(/[ \t]+$/gm, '')
+          .replace(/\\\\([*_`\[\]()#])/g, '\\$1')
+          .replace(/\[]\(.*?\)/g, '')
+          .replace(/^\s+$/gm, '');
+        
+        return { content: [{ type: "text", text: cleanedMarkdown }], isError: false };
+      }
     } catch (error) {
       return Fetcher._handleError(error);
     }
