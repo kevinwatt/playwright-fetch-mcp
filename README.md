@@ -1,4 +1,4 @@
-# BigGo Fetch MCP 伺服器
+# BigGo playwright-fetch MCP Server
 
 此 MCP 伺服器提供以各種格式擷取網頁內容的功能，包括 HTML、JSON、純文字和 Markdown。
 
@@ -161,4 +161,4 @@ if (!allowed) {
 
 ## 授權
 
-此專案採用 MIT 授權條款。
+此專案採用 GNU Affero (GNU AGPL) 授權條款。
