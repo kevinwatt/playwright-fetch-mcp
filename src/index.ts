@@ -12,7 +12,7 @@ import { Fetcher } from "./Fetcher.js";
 const server = new Server(
   {
     name: "@kevinwatt/playwright-fetch-mcp",
-    version: "1.0.7",
+    version: "1.0.8",
   },
   {
     capabilities: {
