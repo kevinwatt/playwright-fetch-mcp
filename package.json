@@ -12,6 +12,7 @@
   "scripts": {
     "build": "tsc && shx chmod +x dist/*.js",
     "prepare": "npm run build",
+    "postinstall": "npx playwright install chromium",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --no-cache"
