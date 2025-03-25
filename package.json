@@ -1,6 +1,6 @@
 {
   "name": "@kevinwatt/biggo-eclimit-fetch-mcp",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A tool for fetching content from e-commerce websites using Playwright",
   "type": "module",
   "main": "dist/index.js",
