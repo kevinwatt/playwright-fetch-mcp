@@ -11,7 +11,7 @@ import { Fetcher } from "./Fetcher.js";
 
 const server = new Server(
   {
-    name: "@kevinwatt/biggo-eclimit-fetch-mcp",
+    name: "@kevinwatt/playwright-fetch-mcp",
     version: "1.0.2",
   },
   {
@@ -23,36 +23,10 @@ const server = new Server(
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  // 檢查 fetch_html 工具是否啟用
-  const fetchHtmlEnv = process.env.fetch_html || "Disable";
-  const isFetchHtmlEnabled = fetchHtmlEnv.toLowerCase() === "enable";
-  
   // 準備工具列表
   const tools = [];
   
-  // 根據環境變量決定是否添加 fetch_html 工具
-  if (isFetchHtmlEnabled) {
-    tools.push({
-      name: "fetch_html",
-      description: "Fetch and return the raw HTML content from a website",
-      inputSchema: {
-        type: "object",
-        properties: {
-          url: {
-            type: "string",
-            description: "The URL of the website to fetch",
-          },
-          headers: {
-            type: "object",
-            description: "Optional request headers",
-          },
-        },
-        required: ["url"],
-      },
-    });
-  }
-  
-  // 添加其他工具（這些工具始終啟用）
+  // 添加工具
   tools.push(
     {
       name: "fetch_markdown",
@@ -114,7 +88,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 const toolHandlers: { [key: string]: (payload: any) => Promise<any> } = {
-  fetch_html: Fetcher.html,
   fetch_json: Fetcher.json,
   fetch_txt: Fetcher.txt,
   fetch_markdown: Fetcher.markdown,
@@ -122,16 +95,6 @@ const toolHandlers: { [key: string]: (payload: any) => Promise<any> } = {
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  
-  // 檢查 fetch_html 工具是否啟用
-  if (name === "fetch_html") {
-    const fetchHtmlEnv = process.env.fetch_html || "Disable";
-    const isFetchHtmlEnabled = fetchHtmlEnv.toLowerCase() === "enable";
-    
-    if (!isFetchHtmlEnabled) {
-      throw new Error("The fetch_html tool is disabled. Please set the environment variable fetch_html=Enable to enable this tool.");
-    }
-  }
   
   const validatedArgs = RequestPayloadSchema.parse(args);
   const handler = toolHandlers[name];
@@ -144,8 +107,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   // 輸出環境變量設置信息
   console.log("Environment variables settings:");
-  console.log(`- fetch_html: ${process.env.fetch_html || "Disable"} (default: Disable)`);
-  console.log(`- DNListCheck: ${process.env.DNListCheck || "Enable"} (default: Enable)`);
+  console.log(`- DNListCheck: ${process.env.DNListCheck || "Disable"} (default: Disable)`);
   
   const transport = new StdioServerTransport();
   await server.connect(transport);

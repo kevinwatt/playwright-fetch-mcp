@@ -18,7 +18,7 @@ export class Fetcher {
     headers,
   }: RequestPayload): Promise<{ content: string; contentType: string }> {
     // 檢查是否需要進行 DNList 檢查
-    const dnListCheckEnv = process.env.DNListCheck || "Enable";
+    const dnListCheckEnv = process.env.DNListCheck || "Disable";
     const shouldCheckDNList = dnListCheckEnv.toLowerCase() !== "disable";
     
     if (shouldCheckDNList) {
