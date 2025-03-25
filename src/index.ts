@@ -23,10 +23,10 @@ const server = new Server(
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  // 準備工具列表
+  // Prepare tool list
   const tools = [];
   
-  // 添加工具
+  // Add tools
   tools.push(
     {
       name: "fetch_markdown",
@@ -105,7 +105,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 async function main() {
-  // 輸出環境變量設置信息
+  // Output environment variable settings information
   console.log("Environment variables settings:");
   console.log(`- DNListCheck: ${process.env.DNListCheck || "Disable"} (default: Disable)`);
   

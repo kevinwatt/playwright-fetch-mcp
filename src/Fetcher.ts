@@ -6,18 +6,18 @@ import { chromium } from "playwright";
 import { Readability } from "@mozilla/readability";
 
 export class Fetcher {
-  // 最大重試次數
+  // Maximum retry count
   private static MAX_RETRIES = 2;
-  // 基本超時時間（毫秒）
+  // Base timeout (ms)
   private static BASE_TIMEOUT = 10000;
-  // 最大重定向次數
+  // Maximum redirect count
   private static MAX_REDIRECTS = 3;
 
   private static async _fetch({
     url,
     headers,
   }: RequestPayload): Promise<{ content: string; contentType: string }> {
-    // 檢查是否需要進行 DNList 檢查
+    // Check if DNList check is needed
     const dnListCheckEnv = process.env.DNListCheck || "Disable";
     const shouldCheckDNList = dnListCheckEnv.toLowerCase() !== "disable";
     
@@ -30,13 +30,13 @@ export class Fetcher {
 
     let lastError: Error | null = null;
     
-    // 重試邏輯
+    // Retry logic
     for (let attempt = 0; attempt <= Fetcher.MAX_RETRIES; attempt++) {
       try {
-        // 啟動 Playwright 瀏覽器
+        // Launch Playwright browser
         const browser = await chromium.launch({ 
           headless: true,
-          // 增加啟動超時時間
+          // Increase launch timeout
           timeout: 30000
         });
         
@@ -51,19 +51,19 @@ export class Fetcher {
         try {
           console.log(`Attempt ${attempt + 1} to fetch ${url}`);
           
-          // 追蹤重定向次數
+          // Track redirect count
           let redirectCount = 0;
           
-          // 設置路由處理程序來監控和限制重定向
+          // Set up route handler to monitor and limit redirects
           await page.route('**/*', async (route) => {
             const request = route.request();
             
-            // 檢查是否為重定向請求
+            // Check if it's a redirect request
             if (request.isNavigationRequest() && request.redirectedFrom()) {
               redirectCount++;
               console.log(`Redirect #${redirectCount}: ${request.redirectedFrom()?.url()} -> ${request.url()}`);
               
-              // 如果重定向次數超過限制，則中止請求
+              // If redirect count exceeds limit, abort the request
               if (redirectCount > Fetcher.MAX_REDIRECTS) {
                 console.error(`Redirect count exceeded limit (${Fetcher.MAX_REDIRECTS}), aborting request`);
                 await route.abort('failed');
@@ -71,13 +71,13 @@ export class Fetcher {
               }
             }
             
-            // 繼續請求
+            // Continue with the request
             await route.continue();
           });
           
-          // 使用最基本的導航方式，不等待任何特定事件
+          // Use basic navigation, don't wait for any specific event
           const response = await page.goto(url, { 
-            waitUntil: "commit", // 只等待開始接收頁面內容
+            waitUntil: "commit", // Only wait for page content to start loading
             timeout: Fetcher.BASE_TIMEOUT * (attempt + 1)
           });
           
@@ -89,35 +89,35 @@ export class Fetcher {
             throw new Error(`HTTP error: ${response.status()}`);
           }
           
-          // 等待一小段時間讓頁面內容加載
+          // Wait a short time for page content to load
           await page.waitForTimeout(2000);
           
-          // 獲取內容類型
+          // Get content type
           const contentType = response.headers()["content-type"] || "";
           
-          // 獲取頁面內容
+          // Get page content
           const content = await page.content();
           
-          // 成功獲取內容，返回結果
+          // Successfully fetched content, return result
           return { content, contentType };
         } finally {
-          // 確保瀏覽器關閉
+          // Ensure browser is closed
           await browser.close();
         }
       } catch (e: unknown) {
         lastError = e instanceof Error ? e : new Error(String(e));
         console.error(`Attempt ${attempt + 1} failed: ${lastError.message}`);
         
-        // 如果不是最後一次嘗試，則等待一段時間後重試
+        // If not the last attempt, wait before retrying
         if (attempt < Fetcher.MAX_RETRIES) {
-          const delay = 1000 * (attempt + 1); // 逐漸增加延遲時間
+          const delay = 1000 * (attempt + 1); // Gradually increase delay time
           console.log(`Waiting ${delay}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
     }
     
-    // 所有重試都失敗了，拋出最後一個錯誤
+    // All retries failed, throw the last error
     throw new Error(`Failed to fetch ${url} after ${Fetcher.MAX_RETRIES + 1} attempts: ${lastError?.message || "Unknown error"}`);
   }
 
@@ -141,10 +141,10 @@ export class Fetcher {
     try {
       const { content } = await Fetcher._fetch(requestPayload);
       
-      // 嘗試從HTML中提取JSON
+      // Try to extract JSON from HTML
       let jsonContent = content;
       
-      // 檢查是否是HTML包裝的JSON
+      // Check if it's HTML-wrapped JSON
       if (content.includes("<pre>") && content.includes("</pre>")) {
         const preMatch = content.match(/<pre>([\s\S]*?)<\/pre>/);
         if (preMatch && preMatch[1]) {
@@ -152,7 +152,7 @@ export class Fetcher {
         }
       }
       
-      // 嘗試解析JSON
+      // Try to parse JSON
       try {
         const jsonObj = JSON.parse(jsonContent);
         return {
@@ -196,121 +196,121 @@ export class Fetcher {
     try {
       const { content } = await Fetcher._fetch(requestPayload);
       
-      // 使用 JSDOM 解析 HTML
+      // Use JSDOM to parse HTML
       const dom = new JSDOM(content, { url: requestPayload.url });
       const document = dom.window.document;
       
       try {
-        // 嘗試使用 Readability 提取主要內容
+        // Try to extract main content using Readability
         const reader = new Readability(document);
         const article = reader.parse();
         
         if (article && article.content) {
-          // 使用提取的主要內容創建新的 DOM
+          // Create new DOM from extracted main content
           const cleanDom = new JSDOM(article.content);
           const cleanDocument = cleanDom.window.document;
           
-          // 創建 TurndownService 實例並配置選項
+          // Create TurndownService instance and configure options
           const turndownService = new TurndownService({
-            headingStyle: 'atx',           // 使用 # 風格的標題
-            codeBlockStyle: 'fenced',      // 使用 ``` 風格的代碼塊
-            emDelimiter: '*',              // 使用 * 作為斜體分隔符
-            strongDelimiter: '**',         // 使用 ** 作為粗體分隔符
-            bulletListMarker: '-',         // 使用 - 作為無序列表標記
-            hr: '---',                     // 使用 --- 作為水平線
-            linkStyle: 'inlined'           // 使用內聯風格的鏈接
+            headingStyle: 'atx',           // Use # style headings
+            codeBlockStyle: 'fenced',      // Use ``` style code blocks
+            emDelimiter: '*',              // Use * for italic delimiter
+            strongDelimiter: '**',         // Use ** for bold delimiter
+            bulletListMarker: '-',         // Use - for unordered list marker
+            hr: '---',                     // Use --- for horizontal rule
+            linkStyle: 'inlined'           // Use inline style links
           });
           
-          // 自定義轉義函數，減少過度轉義
+          // Custom escape function to reduce excessive escaping
           turndownService.escape = function(text) {
-            // 只轉義必要的 Markdown 字符
+            // Only escape necessary Markdown characters
             return text
-              // 轉義反斜線
+              // Escape backslashes
               .replace(/\\/g, '\\\\')
-              // 轉義標題前的數字列表格式
+              // Escape number list format before headings
               .replace(/^(\d+)\.\s/gm, '$1\\. ')
-              // 轉義 * 和 _ 但只在它們可能被解釋為格式化標記時
+              // Escape * and _ but only when they could be interpreted as format markers
               .replace(/([*_])/g, '\\$1')
-              // 轉義 ` 但只在單個反引號時
+              // Escape ` but only for single backticks
               .replace(/`/g, '\\`')
-              // 轉義 [] 和 ()
+              // Escape [] and ()
               .replace(/\[/g, '\\[')
               .replace(/\]/g, '\\]')
               .replace(/\(/g, '\\(')
               .replace(/\)/g, '\\)')
-              // 轉義 # 但只在行首時
+              // Escape # but only at beginning of lines
               .replace(/^#/gm, '\\#');
           };
           
-          // 添加文章標題（如果有）
+          // Add article title (if present)
           let markdown = '';
           if (article.title) {
             markdown += `# ${article.title}\n\n`;
           }
           
-          // 添加作者信息（如果有）
+          // Add author information (if present)
           if (article.byline) {
-            markdown += `*作者: ${article.byline}*\n\n`;
+            markdown += `*Author: ${article.byline}*\n\n`;
           }
           
-          // 轉換清理後的 HTML 為 Markdown
+          // Convert cleaned HTML to Markdown
           markdown += turndownService.turndown(cleanDocument.body.innerHTML);
           
-          // 清理多餘的轉義和空行
+          // Clean up excessive escaping and empty lines
           const cleanedMarkdown = markdown
-            // 移除連續的空行，將多個空行替換為最多兩個空行
+            // Replace consecutive empty lines with maximum two empty lines
             .replace(/\n{3,}/g, '\n\n')
-            // 移除行尾空白
+            // Remove trailing whitespace
             .replace(/[ \t]+$/gm, '')
-            // 修復過度轉義的問題
+            // Fix over-escaped issues
             .replace(/\\\\([*_`\[\]()#])/g, '\\$1')
-            // 移除空的 Markdown 鏈接
+            // Remove empty Markdown links
             .replace(/\[]\(.*?\)/g, '')
-            // 移除只包含空白的行
+            // Remove lines containing only whitespace
             .replace(/^\s+$/gm, '');
           
           return { content: [{ type: "text", text: cleanedMarkdown }], isError: false };
         } else {
-          // 如果 Readability 無法提取內容，回退到原始的清理方法
-          console.log("Readability 無法提取內容，回退到原始清理方法");
-          throw new Error("Readability 無法提取內容");
+          // If Readability cannot extract content, fall back to original cleaning method
+          console.log("Readability couldn't extract content, falling back to original cleaning method");
+          throw new Error("Readability couldn't extract content");
         }
       } catch (readabilityError) {
-        console.error("Readability 處理失敗:", readabilityError);
+        console.error("Readability processing failed:", readabilityError);
         
-        // 回退到原始的清理方法
-        // 移除所有 script 標籤
+        // Fall back to original cleaning method
+        // Remove all script tags
         const scripts = document.getElementsByTagName("script");
         Array.from(scripts).forEach((script) => script.remove());
         
-        // 移除所有 style 標籤
+        // Remove all style tags
         const styles = document.getElementsByTagName("style");
         Array.from(styles).forEach((style) => style.remove());
         
-        // 移除所有 link 標籤 (通常用於引入外部 CSS)
+        // Remove all link tags (usually used to import external CSS)
         const links = document.getElementsByTagName("link");
         Array.from(links).filter(link => link.getAttribute("rel") === "stylesheet").forEach(link => link.remove());
         
-        // 移除所有 noscript 標籤
+        // Remove all noscript tags
         const noscripts = document.getElementsByTagName("noscript");
         Array.from(noscripts).forEach((noscript) => noscript.remove());
         
-        // 移除所有 iframe 標籤
+        // Remove all iframe tags
         const iframes = document.getElementsByTagName("iframe");
         Array.from(iframes).forEach((iframe) => iframe.remove());
         
-        // 移除所有 svg 標籤
+        // Remove all svg tags
         const svgs = document.getElementsByTagName("svg");
         Array.from(svgs).forEach((svg) => svg.remove());
         
-        // 移除所有 inline 樣式
+        // Remove all inline styles
         const elementsWithStyle = document.querySelectorAll("[style]");
         Array.from(elementsWithStyle).forEach((el) => el.removeAttribute("style"));
         
-        // 獲取清理後的 HTML
+        // Get cleaned HTML
         const cleanedHtml = document.documentElement.outerHTML;
         
-        // 創建 TurndownService 實例並配置選項
+        // Create TurndownService instance and configure options
         const turndownService = new TurndownService({
           headingStyle: 'atx',
           codeBlockStyle: 'fenced',
@@ -321,7 +321,7 @@ export class Fetcher {
           linkStyle: 'inlined'
         });
         
-        // 自定義轉義函數，減少過度轉義
+        // Custom escape function to reduce excessive escaping
         turndownService.escape = function(text) {
           return text
             .replace(/\\/g, '\\\\')
@@ -335,10 +335,10 @@ export class Fetcher {
             .replace(/^#/gm, '\\#');
         };
         
-        // 轉換清理後的 HTML 為 Markdown
+        // Convert cleaned HTML to Markdown
         const markdown = turndownService.turndown(cleanedHtml);
         
-        // 清理多餘的轉義和空行
+        // Clean up excessive escaping and empty lines
         const cleanedMarkdown = markdown
           .replace(/\n{3,}/g, '\n\n')
           .replace(/[ \t]+$/gm, '')
